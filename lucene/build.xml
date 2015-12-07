@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="LuceneInAction" default="default" basedir=".">
+	<target name="help">
+		<loadfile property="readme" srcfile="README"/>
+		<echo level="info">
+			${readme}
+		</echo>
+	</target>
+	<property name="build.dir" location="build"/>
+	<property name="data.dir" location="data"/>
+	
+	<path id="classpath">
+		<fileset dir="lib"/>
+	</path>
+	
+	<path id="nutchclasspath">
+    	<fileset dir="lib/nutch"/>
+    </path>
+  
+  	<macrodef name="run-main">
+  		<attribute name="class"/>
+  		<attribute name="spawn" default="no"/>
+  		<element name="args" optional="yes"/>
+  		<sequential>
+  			<echo>Running @{class}</echo>
+  			<java classname="@{class}" fork="true" spawn="@{spawn}">
+  				<sysproperty key="index.dir" file="${build.dir}/index"/>
+  				<args/>
+  				<classpath>
+  					<path refid="classpath"/>
+  					<pathelement location="${build.dir}/classes"/>
+  				</classpath>
+  			</java>
+  		</sequential>
+  	</macrodef>
+  
+  	<macrodef name="run-nutch-main">
+  		<attribute name="class"/>
+	    <attribute name="spawn" default="no"/>
+	    <element name="args" optional="yes"/>
+	
+	    <sequential>
+	      <echo>Running @{class}...</echo>
+	      <java classname="@{class}" fork="true" spawn="@{spawn}">
+	        <sysproperty key="index.dir" file="${build.dir}/index"/>
+	        <args/>
+	        <classpath>
+	          <path refid="nutchclasspath"/>
+	          <pathelement location="${build.dir}/classes"/>
+	          <pathelement location="conf"/> <!-- for Nutch -->
+	        </classpath>
+	      </java>
+	    </sequential>
+  	</macrodef>
+  	
+  	<macrodef name="info">
+	    <text name="text"/>
+	    <sequential>
+	      <echo level="info">@{text}</echo>
+	      <input addProperty="nopause" message="Press return to continue..."/>
+	    </sequential>
+  	</macrodef>
+  	
+  	<target name="clean" description="remove temporary build artifacts">
+  		<delete dir="${build.dir}"/>
+  	</target>
+  	
+  	<target name="compile" description="compile source code" depends="clean">
+  		<mkdir dir="${build.dir}/classes"/>
+  		<javac srcdir="src" destdir="${build.dir}/classes" classpathref="classpath" encoding="UTF8"
+  			debug="on" deprecation="on">
+  			<include name="**/*.java"/>
+  			<exclude name="**/NutchExalple.java"/>
+  		</javac>
+  		<copy todir="${build.dir}/classes/cn/beijing/lucene/tools">
+  			<fileset dir="src/cn/beijing/lucene/tools" excludes="**/*.java"/>
+  		</copy>
+  	</target>
+  	
+  	<target name="Indexer" depends="prepare" description="Indexes a direntory of .txt files">
+  		<info>
+	      Index *.txt files in a directory into a Lucene index.  Use the
+	      Searcher target to search this index.
+	
+	      Indexer is covered in the "Meet Lucene" chapter.
+	    </info>
+	    <input message="Directory for new Lucene index:"
+	    	   addProperty="index.dir"
+	    	   defaultValue="indexes/MeetLucene"/>
+	    <input message="Directory with .txt files to index:"
+	    	   addProperty="text.dir"
+	    	   defaultValue="src/cn/beijing/lucene/indexer/data"/>
+	   	<input message="Overwrite ${index.dir}?"
+           validargs="y,n"
+           addproperty="confirm.overwrite"
+    	/>
+    	<condition property="abort">
+    		<equals arg1="n" arg2="${confirm.overwrite}"/>
+    	</condition>
+    	<fail if="abort">Aborted.</fail>
+    	<run-main class="cn.beijing.lucene.indexer.Indexer">
+    		<args>
+    			<arg file="${index.dir}"/>
+    			<arg file="${text.dir}"/>
+    		</args>
+    	</run-main>
+  	</target>
+  	
+  	<target name="Searcher" depends="prepare" description="Seaches a index built by Indexer">
+  		<info>
+	       Search an index built using Indexer.
+
+      	   Searcher is described in the "Meet Lucene" chapter.
+	    </info>
+	    <input message="Directory of existing Lucene index built by Indexer:"
+	    	   addProperty="index.dir"
+	    	   defaultValue="indexes/MeetLucene"/>
+	   	<input message="Query:"
+           addproperty="query"
+           defaultValue="patent"
+    	/>
+    	<run-main class="cn.beijing.lucene.searcher.Searcher">
+    		<args>
+    			<arg file="${index.dir}"/>
+    			<arg value="${query}"/>
+    		</args>
+    	</run-main>
+  	</target>
+  
+  <target name="prepare" depends="compile"/>
+  <!-- ,compile-nutch,build-test-index -->
+  <target name="ready-set-go">
+    <echo level="info">
+      The code will next be compiled and the test indexes will be
+      created.  This process is only done once.  Follow the
+      instructions from the README (or as shown from "ant help")
+      after this process completes.
+    </echo>
+  </target>
+  
+  <target name="default" depends="help,ready-set-go,prepare"/>
+</project>
